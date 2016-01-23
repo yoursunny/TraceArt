@@ -2,6 +2,7 @@
 define('ALLOCFILE', '/home/traceart/alloc.txt');
 define('FLATFILE', '/home/traceart/flat.txt');
 define('REVCONF', '/home/traceart/db.traceart');
+define('FWDCONF', '/home/traceart/db.traceart.yoursunny.cn');
 
 $input = file_get_contents('php://input');
 
@@ -33,6 +34,14 @@ $pBindconf = proc_open('python3 bindconf.py ',
                        ),
                        $pipes);
 proc_close($pBindconf);
+
+$pForwardconf = proc_open('python3 forwardconf.py ',
+                       array(
+                         0=>array('file', ALLOCFILE, 'r'),
+                         1=>array('file', FWDCONF, 'w')
+                       ),
+                       $pipes);
+proc_close($pForwardconf);
 
 exec('./bind-reload');
 ?>
