@@ -1,15 +1,11 @@
-# read input.txt
-
-# write db.txt that looks same as db.he-ipv6
 import time
+import sys
 
 def read_write():
-    afile = open('input.txt')
-    nfile = open('output.txt','w')
     timestr = str(int(time.time()))
-    nfile.write('$TTL 300\n@ IN SOA vps3.yoursunny.com. traceart-ns.mailinator.com. (\n\t\t ' + timestr +'\n\t\t 604800\n\t\t 86400\n\t\t 2419200\n\t\t 300 );\n\n@ IN NS vps3.yoursunny.com.\n\n')
+    sys.stdout.write('$TTL 300\n@ IN SOA vps3.yoursunny.com. traceart-ns.mailinator.com. (\n\t\t ' + timestr +'\n\t\t 604800\n\t\t 86400\n\t\t 2419200\n\t\t 300 );\n\n@ IN NS vps3.yoursunny.com.\n\n')
 
-    for line in afile:
+    for line in sys.stdin:
         line = line.strip()
         alist = line.split()
         alist[0] = reversed(alist[0])
@@ -18,10 +14,8 @@ def read_write():
             newstr += item + '.'
         numstr = newstr[:-1]
         fullstr = numstr + ' IN PTR ' + alist[1] + '.'
-        nfile.write(fullstr + '\n')
+        sys.stdout.write(fullstr + '\n')
 
-    afile.close()
-    nfile.close()
 
 def main():
     read_write()
