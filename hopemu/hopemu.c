@@ -9,8 +9,10 @@
 uint16_t
 rfc1071checksum(const void* pkt, size_t size, uint16_t lastSum)
 {
+  bool hasOddByte = false;
   if (size % 2 != 0) {
-    return 0;
+    --size;
+    hasOddByte = true;
   }
 
   const uint16_t* p = (const uint16_t*)pkt;
@@ -22,6 +24,14 @@ rfc1071checksum(const void* pkt, size_t size, uint16_t lastSum)
     sum = (0xffff & sum) + (sum >> 16);
     ++p;
   }
+
+  if (hasOddByte) {
+    uint16_t lastPair = 0;
+    *(uint8_t*)&lastPair = *(uint8_t*)end;
+    sum += lastPair;
+    sum = (0xffff & sum) + (sum >> 16);
+  }
+
   return (uint16_t)(sum ^ 0xffff);
 }
 
@@ -65,9 +75,6 @@ makeIcmpError(char* outPkt, uint8_t type, uint8_t code, const struct in6_addr* s
   if (inLen < payloadLen) {
     payloadLen = inLen;
   }
-  if (payloadLen % 2 == 1) {
-    --payloadLen;
-  }
   size_t outLen = sizeof(struct ipv6hdr) + sizeof(struct icmp6_hdr) + payloadLen;
 
   ip6->version = 6;
@@ -81,12 +88,29 @@ makeIcmpError(char* outPkt, uint8_t type, uint8_t code, const struct in6_addr* s
 
   icmp6->icmp6_type = type;
   icmp6->icmp6_code = code;
-  icmp6->icmp6_cksum = 0xDDDD;
   icmp6->icmp6_dataun.icmp6_un_data32[0] = 0;
 
   memcpy(payload, inPkt, payloadLen);
   updateIcmpChecksum(outPkt, outLen);
   return outLen;
+}
+
+int
+makeIcmpEchoReply(char* outPkt, const char* inPkt, size_t inLen)
+{
+  memcpy(outPkt, inPkt, inLen);
+
+  const struct ipv6hdr* inIp6 = (struct ipv6hdr*)inPkt;
+  struct ipv6hdr* ip6 = (struct ipv6hdr*)outPkt;
+  ip6->hop_limit = 64;
+  memcpy(&ip6->saddr.s6_addr, &inIp6->daddr.s6_addr, sizeof(ip6->saddr.s6_addr));
+  memcpy(&ip6->daddr.s6_addr, &inIp6->saddr.s6_addr, sizeof(ip6->daddr.s6_addr));
+
+  struct icmp6_hdr* icmp6 = (struct icmp6_hdr*)(outPkt + sizeof(struct ipv6hdr));
+  icmp6->icmp6_type = ICMP6_ECHO_REPLY;
+
+  updateIcmpChecksum(outPkt, inLen);
+  return inLen;
 }
 
 int
@@ -118,8 +142,18 @@ processPacket(const char* inPkt, size_t inLen, char* outPkt)
   const uint8_t* prefix = ip6->daddr.s6_addr; // 120-bit prefix
   uint8_t suffix = ip6->daddr.s6_addr[15]; // 8-bit suffix
 
+  bool isPing = false;
+  if (ip6->nexthdr == IPPROTO_ICMPV6) {
+    const struct icmp6_hdr* icmp6 = (const struct icmp6_hdr*)(inPkt + sizeof(struct ipv6hdr));
+    isPing = icmp6->icmp6_type == ICMP6_ECHO_REQUEST;
+  }
+
   uint8_t hopLimit = ip6->hop_limit;
   if (hopLimit < suffix) { // packet cannot reach destination
+    if (!isPing) {
+      fprintf(stderr, "time-exceeded-icmp %s %s %u\n", srcAddrP, dstAddrP, hopLimit);
+      return -1;
+    }
     fprintf(stderr, "time-exceeded %s %s %u\n", srcAddrP, dstAddrP, hopLimit);
     struct in6_addr icmpSrc;
     memcpy(icmpSrc.s6_addr, prefix, 15);
@@ -127,6 +161,10 @@ processPacket(const char* inPkt, size_t inLen, char* outPkt)
     return makeIcmpError(outPkt, ICMP6_TIME_EXCEEDED, ICMP6_TIME_EXCEED_TRANSIT, &icmpSrc, inPkt, inLen);
   }
   else { // packet reaches destination
+    if (isPing) {
+      fprintf(stderr, "ping %s %s %u\n", srcAddrP, dstAddrP, hopLimit);
+      return makeIcmpEchoReply(outPkt, inPkt, inLen);
+    }
     fprintf(stderr, "reach %s %s %u\n", srcAddrP, dstAddrP, hopLimit);
     return makeIcmpError(outPkt, ICMP6_DST_UNREACH, ICMP6_DST_UNREACH_NOPORT, &ip6->daddr, inPkt, inLen);
   }
