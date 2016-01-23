@@ -1,0 +1,21 @@
+<!doctype html>
+<title>TraceArt API</title>
+<textarea id="input" rows="20" cols="80">
+</textarea><br>
+<input id="save" type="button" value="OK">
+<div id="result"></div>
+
+<script src="//code.jquery.com/jquery-2.2.0.min.js"></script>
+<script>
+$('#save').click(function(){
+  var input = $('#input').val();
+  $.ajax('submit.php', {
+    method: 'POST'
+    data: input,
+    processData: false,
+    dataType: 'text',
+  })
+  .done(function(){ $('#result').text('OK'); })
+  .fail(function(){ $('#result').text('FAIL'); });
+});
+</script>
