@@ -123,14 +123,13 @@ processPacket(const char* inPkt, size_t inLen, char* outPkt)
     fprintf(stderr, "time-exceeded %s %s %u\n", srcAddrP, dstAddrP, hopLimit);
     struct in6_addr icmpSrc;
     memcpy(icmpSrc.s6_addr, prefix, 15);
-    icmpSrc.s6_addr[16] = hopLimit;
+    icmpSrc.s6_addr[15] = hopLimit;
     return makeIcmpError(outPkt, ICMP6_TIME_EXCEEDED, ICMP6_TIME_EXCEED_TRANSIT, &icmpSrc, inPkt, inLen);
   }
   else { // packet reaches destination
     fprintf(stderr, "reach %s %s %u\n", srcAddrP, dstAddrP, hopLimit);
+    return makeIcmpError(outPkt, ICMP6_DST_UNREACH, ICMP6_DST_UNREACH_NOPORT, &ip6->daddr, inPkt, inLen);
   }
-
-  return 0;
 }
 
 int
