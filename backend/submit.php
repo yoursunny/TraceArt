@@ -20,11 +20,11 @@ proc_close($pAlloc);
 file_put_contents(ALLOCFILE, $alloc);
 
 $pTransform = proc_open('python3 transform.py ',
-                       array(
-                         0=>array('file', ALLOCFILE, 'r'),
-                         1=>array('file', FLATFILE, 'w')
-                       ),
-                       $pipes);
+                        array(
+                          0=>array('file', ALLOCFILE, 'r'),
+                          1=>array('file', FLATFILE, 'w')
+                        ),
+                        $pipes);
 proc_close($pTransform);
 
 $pBindconf = proc_open('python3 bindconf.py ',
@@ -36,12 +36,25 @@ $pBindconf = proc_open('python3 bindconf.py ',
 proc_close($pBindconf);
 
 $pForwardconf = proc_open('python3 forwardconf.py ',
-                       array(
-                         0=>array('file', ALLOCFILE, 'r'),
-                         1=>array('file', FWDCONF, 'w')
-                       ),
-                       $pipes);
+                          array(
+                            0=>array('file', ALLOCFILE, 'r'),
+                            1=>array('file', FWDCONF, 'w')
+                          ),
+                          $pipes);
 proc_close($pForwardconf);
 
+$pLastname = proc_open('python3 lastname.py',
+                       array(
+                         0=>array('file', ALLOCFILE, 'r'),
+                         1=>array('pipe', 'w')
+                       ),
+                       $pipes);
+$lastname = stream_get_contents($pipes[1]);
+fclose($pipes[1]);
+proc_close($pLastname);
+file_put_contents(ALLOCFILE, $alloc);
+
 exec('./bind-reload');
+
+echo $lastname;
 ?>

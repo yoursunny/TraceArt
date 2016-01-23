@@ -10,12 +10,12 @@
 $('#save').click(function(){
   var input = $('#input').val();
   $.ajax('submit.php', {
-    method: 'POST'
+    method: 'POST',
     data: input,
     processData: false,
     dataType: 'text',
   })
-  .done(function(){ $('#result').text('OK'); })
+  .done(function(name){ $('#result').text('traceroute6 -m255 ' + name); })
   .fail(function(){ $('#result').text('FAIL'); });
 });
 </script>
