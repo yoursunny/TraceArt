@@ -1,10 +1,8 @@
 #include "hopemu.h"
+#include <linux/ipv6.h>
+#define __USE_KERNEL_IPV6_DEFS
 #include <net/if.h>
 #include <arpa/inet.h>
-
-#define _LINUX_IN6_H
-#include <linux/ipv6.h>
-#undef _LINUX_IN6_H
 
 int
 processPacket(const char* inPkt, size_t inLen, char* outPkt)
@@ -31,12 +29,19 @@ processPacket(const char* inPkt, size_t inLen, char* outPkt)
     return -1;
   }
 
-  fprintf(stderr, "received %s %s\n", srcAddrP, dstAddrP);
+  // split dstaddr as 120-bit prefix and 8-bit suffix
+  const uint8_t* prefix = &ip6->daddr.s6_addr[0]; // 120-bit prefix
+  uint8_t suffix = ip6->daddr.s6_addr[15]; // 8-bit suffix
+
+  uint8_t hopLimit = ip6->hop_limit;
+  if (hopLimit < suffix) { // packet cannot reach destination
+    fprintf(stderr, "time-exceeded %s %s %u\n", srcAddrP, dstAddrP, hopLimit);
+  }
+  else { // packet reaches destination
+    fprintf(stderr, "reach %s %s %u\n", srcAddrP, dstAddrP, hopLimit);
+  }
 
   return 0;
-  // split dstaddr as 120-bit prefix and 8-bit suffix
-  // if HopLimit < suffix: reply with ICMPv6 TimeExceeded prefix+HopLimit
-  // else: reply with ICMPv6 PortUnreachable
 }
 
 int
