@@ -1,0 +1,90 @@
+<!doctype html>
+<title>TraceArt</title>
+<link rel="stylesheet" href="//cdn.jsdelivr.net/pure/0.6.0/pure-min.css">
+<style>
+html { background:url(ignasi_pattern_s.png); /* http://subtlepatterns.com/one-in-a-million-s/ */ }
+body { padding:2em; }
+#input { height:20em; }
+</style>
+
+<div class="pure-g">
+<div class="pure-u-1-3">
+<img src="logo.jpg" alt="TraceArt logo">
+</div>
+<div class="pure-u-2-3">
+<h1>TraceArt: show your favorite quotes on traceroute6</h1>
+</div>
+</div>
+
+<div id="f_submit" class="pure-g"><div class="pure-u-1">
+<h2>Submit your favorite quotes / lyrics / poem</h2>
+<form class="pure-form pure-form-stacked"><fieldset>
+<textarea id="input" class="pure-input-2-3"></textarea>
+<input id="save" type="button" class="pure-button pure-button-primary button-xlarge" value="OK">
+</fieldset></form>
+</div></div>
+
+<div id="f_result" style="display:none;" class="pure-g"><div class="pure-u-1">
+<h2>Thanks for your submission.</h2>
+<p>Execute <kbd>traceroute -m255 <span id="dest">destination</span></kdb>, and expect to see:</p>
+<pre id="lines"></pre>
+<p>Note: This works over IPv6 only. If you don't have native IPv6, try running traceroute on <a href="http://lg/he.net">HE Looking Glass</a>.</p>
+</div></div>
+
+<script src="//code.jquery.com/jquery-2.2.0.min.js"></script>
+<script>
+$('#save').click(function(){
+  var input = $('#input').val();
+  var lines = [];
+  input.split('\n').forEach(function(line){
+    var tokens = line.replace(/[^0-9A-Za-z\-\n]/gm, '.')
+                 .split('.')
+                 .map(function(token){ return token.replace(/\.+/g, '.').replace(/^[.-]*/, '').replace(/[.-]*$/, ''); })
+                 .filter(function(token){ return token.length>0; });
+    var line = '';
+    tokens.forEach(function(token){
+      if ((line + '.' + token).length > 250) {
+        if (line.length > 0) {
+          lines.push(line);
+          line = token;
+        }
+        else {
+          lines.push(token.substr(0, 250).replace(/[.-]*$/, ''));
+        }
+      }
+      else {
+        if (line.length > 0) {
+          line += '.';
+        }
+        line += token;
+      }
+    });
+    if (line.length > 0) {
+      lines.push(line);
+    }
+    if (lines.length >= 250) {
+      return;
+    }
+  })
+  if (lines.length < 1) {
+    alert('Say something, please.');
+    return;
+  }
+  var body = lines.join('\n');
+  $.ajax('https://api.traceart.yoursunny.cn/submit.php', {
+    method: 'POST',
+    data: body,
+    processData: false,
+    dataType: 'text',
+  })
+  .done(function(dest){
+    $('#f_submit').hide();
+    $('#dest').text(dest);
+    $('#lines').text(body);
+    $('#f_result').show();
+  })
+  .fail(function(){
+    alert('An error occurred. Please try again later.');
+  });
+});
+</script>

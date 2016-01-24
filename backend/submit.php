@@ -1,4 +1,10 @@
 <?php
+if (@$_SERVER['HTTP_ORIGIN'] != 'https://traceart.yoursunny.cn') {
+  header('HTTP/1.1 403');
+  die;
+}
+header('Access-Control-Allow-Origin: https://traceart.yoursunny.cn');
+
 define('ALLOCFILE', '/home/traceart/alloc.txt');
 define('FLATFILE', '/home/traceart/flat.txt');
 define('REVCONF', '/home/traceart/db.traceart');
