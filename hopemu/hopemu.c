@@ -150,7 +150,7 @@ processPacket(const char* inPkt, size_t inLen, char* outPkt)
 
   uint8_t hopLimit = ip6->hop_limit;
   if (hopLimit < suffix) { // packet cannot reach destination
-    if (!isPing) {
+    if (ip6->nexthdr == IPPROTO_ICMPV6 && !isPing) { // ICMP error
       fprintf(stderr, "time-exceeded-icmp %s %s %u\n", srcAddrP, dstAddrP, hopLimit);
       return -1;
     }
